@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Healthcare Bot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            AI Healthcare Bot
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <!-- Messages will be loaded here -->
+        </div>
+        <form class="chat-input-form" id="chat-input-form">
+            <input type="text" id="user-input" placeholder="Type your message...">
+            <button type="button" id="voice-input-button">🎙️</button>
+            <button type="submit">Send</button>
+        </form>
+    </div>
+
+    <div class="reminder-container">
+        <div class="reminder-header">
+            Medicine Reminders
+        </div>
+        <div class="reminder-list" id="reminder-list">
+            <!-- Reminders will be loaded here -->
+        </div>
+        <div class="reminder-input-form">
+            <input type="text" id="medicine-name" placeholder="Medicine Name">
+            <input type="time" id="reminder-time">
+            <button id="add-reminder-button">Add Reminder</button>
+        </div>
+    </div>
+
+    <div class="emergency-container">
+        <div class="emergency-header">
+            Emergency Assistance
+        </div>
+        <div class="emergency-content">
+            <button id="find-hospitals-button">Find Nearby Hospitals/Clinics</button>
+            <div id="hospital-results"></div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

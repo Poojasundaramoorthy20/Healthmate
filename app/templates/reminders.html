@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Medicine Reminders{% endblock %}
+
+{% block extra_css %}
+<style>
+    .reminder-form {
+        background: #f8f9fa;
+        padding: 25px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .btn {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #5568d3;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+        padding: 8px 15px;
+        font-size: 14px;
+    }
+
+    .btn-danger:hover {
+        background: #c82333;
+    }
+
+    .reminders-list {
+        margin-top: 30px;
+    }
+
+    .reminder-card {
+        background: white;
+        border: 2px solid #667eea;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: transform 0.2s;
+    }
+
+    .reminder-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .reminder-info h3 {
+        color: #667eea;
+        margin-bottom: 8px;
+    }
+
+    .reminder-time {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .no-reminders {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+    }
+
+    .no-reminders-icon {
+        font-size: 64px;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>💊 Medicine Reminders</h1>
+<p style="text-align: center; color: #666; margin-bottom: 30px;">Set up reminders for your medications</p>
+
+<div id="alert-container"></div>
+
+<audio id="alarm-sound" src="/static/alarm.mp3" preload="auto"></audio>
+
+<div class="reminder-form">
+    <h2 style="margin-bottom: 20px; color: #667eea;">Add New Reminder</h2>
+    <form id="reminder-form">
+        <div class="form-group">
+            <label for="medicine-name">Medicine Name</label>
+            <input type="text" id="medicine-name" placeholder="Enter medicine name" required />
+        </div>
+        <div class="form-group">
+            <label for="reminder-time">Reminder Time</label>
+            <input type="time" id="reminder-time" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Add Reminder</button>
+    </form>
+</div>
+
+<div class="reminders-list">
+    <h2 style="margin-bottom: 20px; color: #667eea;">Your Reminders</h2>
+    <div id="reminders-container">
+        <div class="no-reminders">
+            <div class="no-reminders-icon">📋</div>
+            <p>No reminders yet. Add your first reminder above!</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+<script src="/static/script.js"></script>
+{% endblock %}

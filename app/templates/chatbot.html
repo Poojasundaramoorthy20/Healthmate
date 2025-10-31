@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}AI Health Chatbot{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 600px;
+        border: 2px solid #667eea;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .chat-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #f8f9fa;
+    }
+
+    .message {
+        margin-bottom: 15px;
+        display: flex;
+        align-items: flex-start;
+        animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+        justify-content: flex-end;
+    }
+
+    .message-content {
+        max-width: 70%;
+        padding: 12px 18px;
+        border-radius: 18px;
+        word-wrap: break-word;
+    }
+
+    .message.bot .message-content {
+        background: #667eea;
+        color: white;
+        border-bottom-left-radius: 4px;
+    }
+
+    .message.user .message-content {
+        background: #764ba2;
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+
+    .message-label {
+        font-size: 0.8em;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .chat-input-container {
+        display: flex;
+        padding: 20px;
+        background: white;
+        border-top: 1px solid #ddd;
+    }
+
+    #user-input {
+        flex: 1;
+        padding: 12px;
+        border: 2px solid #667eea;
+        border-radius: 25px;
+        font-size: 16px;
+        outline: none;
+    }
+
+    #send-button {
+        margin-left: 10px;
+        padding: 12px 30px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.3s;
+    }
+
+    #send-button:hover:not(:disabled) {
+        background: #5568d3;
+    }
+
+    #send-button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    .typing-indicator {
+        display: none;
+        padding: 10px;
+        background: #667eea;
+        color: white;
+        border-radius: 18px;
+        width: 60px;
+    }
+
+    .typing-indicator.show {
+        display: inline-block;
+    }
+
+    .typing-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: white;
+        border-radius: 50%;
+        margin: 0 2px;
+        animation: typing 1.4s infinite;
+    }
+
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @keyframes typing {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-10px); }
+    }
+
+    .welcome-message {
+        text-align: center;
+        color: #666;
+        padding: 40px 20px;
+    }
+
+    .welcome-message h2 {
+        color: #667eea;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>🤖 AI Health Chatbot</h1>
+<p style="text-align: center; color: #666; margin-bottom: 20px;">Ask me anything about health, symptoms, or medications</p>
+
+<div class="chat-container">
+    <div class="chat-messages" id="chat-messages">
+        <div class="welcome-message">
+            <h2>👋 Hello! I'm your AI Health Assistant</h2>
+            <p>Feel free to ask me questions about health, symptoms, medications, or general wellness advice.</p>
+        </div>
+    </div>
+    <div class="chat-input-container">
+        <input type="text" id="user-input" placeholder="Type your message here..." />
+        <button id="send-button">Send</button>
+        <!-- <button id="voice-input-button" style="margin-left: 10px; padding: 12px 20px; background: #28a745; color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: 600;">Speak</button> -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const chatMessages = document.getElementById('chat-messages');
+    const userInput = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button');
+    const sessionId = 'user_' + Date.now();
+
+    function addMessage(content, isUser) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.textContent = content;
+        
+        messageDiv.appendChild(contentDiv);
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function showTypingIndicator() {
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message bot';
+        typingDiv.id = 'typing-indicator';
+        
+        const indicator = document.createElement('div');
+        indicator.className = 'typing-indicator show';
+        indicator.innerHTML = '<span></span><span></span><span></span>';
+        
+        typingDiv.appendChild(indicator);
+        chatMessages.appendChild(typingDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function hideTypingIndicator() {
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+
+    async function sendMessage() {
+        const message = userInput.value.trim();
+        if (!message) return;
+
+        // Clear input and disable button
+        userInput.value = '';
+        sendButton.disabled = true;
+        
+        // Add user message
+        addMessage(message, true);
+        
+        // Show typing indicator
+        showTypingIndicator();
+
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    session_id: sessionId
+                }),
+            });
+
+            const data = await response.json();
+            
+            hideTypingIndicator();
+
+            if (data.success && data.response) {
+                addMessage(data.response, false);
+            } else {
+                addMessage('Sorry, I encountered an error. Please try again.', false);
+            }
+        } catch (error) {
+            hideTypingIndicator();
+            addMessage('Sorry, I could not connect to the server. Please try again later.', false);
+            console.error('Error:', error);
+        } finally {
+            sendButton.disabled = false;
+            userInput.focus();
+        }
+    }
+
+    sendButton.addEventListener('click', sendMessage);
+    
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    // Focus input on load
+    userInput.focus();
+</script>
+{% endblock %}

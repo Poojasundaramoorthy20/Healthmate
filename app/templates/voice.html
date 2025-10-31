@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🎤 Voice AI Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 50px;
+      background: #f7f9fc;
+    }
+    button {
+      padding: 15px 25px;
+      border: none;
+      border-radius: 10px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      margin: 10px;
+    }
+    button:disabled {
+      background-color: gray;
+    }
+    #output {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎤 Voice Assistant for AI Chatbot</h1>
+  <button id="recordBtn">🎙️ Start Talking</button>
+  <button id="stopBtn" disabled>⏹️ Stop</button>
+  <div id="output"></div>
+  <audio id="audioPlayer" controls style="margin-top: 20px;"></audio>
+
+  <script>
+    let mediaRecorder;
+    let audioChunks = [];
+
+    const recordBtn = document.getElementById("recordBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const output = document.getElementById("output");
+    const audioPlayer = document.getElementById("audioPlayer");
+
+    recordBtn.onclick = async () => {
+      recordBtn.disabled = true;
+      stopBtn.disabled = false;
+      output.textContent = "🎙️ Listening...";
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const formData = new FormData();
+        formData.append('audio', blob, 'speech.webm');
+
+        output.textContent = "⏳ Processing...";
+
+        const response = await fetch("/api/voice-chat", {
+          method: "POST",
+          body: formData
+        });
+
+        if (response.ok) {
+          const audioBlob = await response.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+          audioPlayer.src = audioUrl;
+          audioPlayer.play();
+          output.textContent = "🤖 AI replied (listen above)";
+        } else {
+          const error = await response.json();
+          output.textContent = "⚠️ Error: " + error.error;
+        }
+
+        recordBtn.disabled = false;
+        stopBtn.disabled = true;
+      };
+
+      mediaRecorder.start();
+    };
+
+    stopBtn.onclick = () => {
+      mediaRecorder.stop();
+      recordBtn.disabled = false;
+      stopBtn.disabled = true;
+      output.textContent = "🔄 Processing...";
+    };
+  </script>
+</body>
+</html>

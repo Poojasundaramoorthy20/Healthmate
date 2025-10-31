@@ -1,0 +1,544 @@
+{% extends "base.html" %}
+
+{% block title %}Find Nearby Hospitals{% endblock %}
+
+{% block extra_css %}
+<style>
+    .location-section {
+        background: #f8f9fa;
+        padding: 25px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .btn {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: #5568d3;
+    }
+
+    .btn-primary:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    .loading {
+        display: none;
+        text-align: center;
+        padding: 20px;
+        color: #667eea;
+    }
+
+    .loading.show {
+        display: block;
+    }
+
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .hospitals-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .hospital-card {
+        background: white;
+        border: 2px solid #667eea;
+        border-radius: 10px;
+        padding: 20px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .hospital-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .hospital-name {
+        color: #667eea;
+        font-size: 1.2em;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .hospital-address {
+        color: #666;
+        margin-bottom: 10px;
+        font-size: 0.95em;
+    }
+
+    .hospital-rating {
+        display: inline-block;
+        background: #ffc107;
+        color: white;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 0.9em;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .hospital-actions {
+        margin-top: 15px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-small {
+        padding: 8px 15px;
+        font-size: 14px;
+        flex: 1;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+    .no-results {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+    }
+
+    .no-results-icon {
+        font-size: 64px;
+        margin-bottom: 15px;
+    }
+
+    .location-info {
+        background: #e7f3ff;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 15px;
+        color: #004085;
+    }
+
+    .map-container {
+        margin-top: 30px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #map {
+        height: 500px;
+        width: 100%;
+        border: none;
+    }
+
+    .map-controls {
+        background: #f8f9fa;
+        padding: 15px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .map-title {
+        font-weight: 600;
+        color: #667eea;
+        margin: 0;
+    }
+
+    .map-stats {
+        color: #666;
+        font-size: 0.9em;
+    }
+
+    .hidden {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>🏥 Find Nearby Hospitals</h1>
+<p style="text-align: center; color: #666; margin-bottom: 30px;">Locate hospitals and clinics near your location</p>
+
+<div id="alert-container"></div>
+
+<div class="location-section">
+    <h2 style="color: #667eea; margin-bottom: 15px;">Get Your Location</h2>
+    <p style="margin-bottom: 20px; color: #666;">Click the button below to find hospitals near you</p>
+    <button id="find-hospitals-btn" class="btn btn-primary">📍 Find Hospitals Near Me</button>
+    <div id="location-info" class="location-info hidden"></div>
+</div>
+
+<div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Searching for nearby hospitals...</p>
+</div>
+
+<div id="hospitals-container">
+    <div class="no-results">
+        <div class="no-results-icon">🏥</div>
+        <p>Click the button above to find hospitals near your location</p>
+    </div>
+</div>
+
+<div id="map-container" class="map-container">
+    <div class="map-controls">
+        <h3 class="map-title">📍 Nearby Hospitals Map</h3>
+        <div class="map-stats" id="map-stats">0 hospitals found</div>
+    </div>
+    <div id="map"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if GOOGLE_MAPS_API_KEY %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places"></script>
+{% else %}
+<script src="https://maps.googleapis.com/maps/api/js?libraries=places"></script>
+{% endif %}
+<script>
+    const findHospitalsBtn = document.getElementById('find-hospitals-btn');
+    const hospitalsContainer = document.getElementById('hospitals-container');
+    const loading = document.getElementById('loading');
+    const alertContainer = document.getElementById('alert-container');
+    const locationInfo = document.getElementById('location-info');
+    const mapContainer = document.getElementById('map-container');
+    const mapStats = document.getElementById('map-stats');
+    
+    let map;
+    let markers = [];
+    let userLocation = null;
+    let currentInfoWindow = null; // To keep track of the currently open info window
+    
+    // Default location (e.g., a major city's coordinates) if geolocation is denied or unavailable
+    const DEFAULT_LATITUDE = 34.0522;
+    const DEFAULT_LONGITUDE = -118.2437; // Los Angeles, CA
+
+    function showAlert(message, type = 'success') {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.textContent = message;
+        alertContainer.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+
+    function showLoading() {
+        loading.classList.add('show');
+        hospitalsContainer.innerHTML = '';
+    }
+
+    function hideLoading() {
+        loading.classList.remove('show');
+    }
+
+    function initMap(latitude, longitude) {
+        if (map) {
+            map = null;
+        }
+        
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: { lat: latitude, lng: longitude },
+            zoom: 13,
+            mapTypeId: 'roadmap',
+            fullscreenControl: true, // Allow fullscreen map
+            mapTypeControl: true,    // Allow changing map type (roadmap, satellite)
+            streetViewControl: true, // Allow street view
+            zoomControl: true,       // Allow zooming
+            styles: [
+                {
+                    featureType: 'poi',
+                    elementType: 'labels',
+                    stylers: [{ visibility: 'off' }] // Turn off POI labels by default for a cleaner look
+                }
+            ]
+        });
+
+        // Add a click listener to the map to close any open info windows
+        map.addListener('click', function() {
+            if (currentInfoWindow) {
+                currentInfoWindow.close();
+            }
+        });
+
+        // Add user location marker
+        userLocation = new google.maps.Marker({
+            position: { lat: latitude, lng: longitude },
+            map: map,
+            title: 'Your Location',
+            icon: {
+                url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+                scaledSize: new google.maps.Size(40, 40)
+            }
+        });
+
+        // Add info window for user location
+        const userInfoWindow = new google.maps.InfoWindow({
+            content: '<div style="padding: 10px;"><strong>📍 Your Location</strong><br>You are here</div>'
+        });
+        
+        userLocation.addListener('click', () => {
+            userInfoWindow.open(map, userLocation);
+        });
+    }
+
+    function addHospitalMarkers(hospitals) {
+        // Clear existing markers
+        markers.forEach(marker => marker.setMap(null));
+        markers = [];
+
+        hospitals.forEach((hospital, index) => {
+            if (hospital.lat && hospital.lng) {
+                const marker = new google.maps.Marker({
+                    position: { lat: hospital.lat, lng: hospital.lng },
+                    map: map,
+                    title: hospital.name,
+                    icon: {
+                        url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                        scaledSize: new google.maps.Size(30, 30)
+                    }
+                });
+
+                const ratingText = hospital.rating && hospital.rating !== 'N/A' 
+                    ? `⭐ Rating: ${hospital.rating}` 
+                    : '';
+
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div style="padding: 10px; max-width: 250px;">
+                            <h4 style="margin: 0 0 8px 0; color: #667eea;">${hospital.name}</h4>
+                            <p style="margin: 0 0 8px 0; color: #666;">📍 ${hospital.address}</p>
+                            ${ratingText ? `<p style="margin: 0 0 8px 0;">${ratingText}</p>` : ''}
+                            <div style="margin-top: 10px;">
+                                <a href="https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lng}" 
+                                   target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600;">
+                                    🗺️ Get Directions
+                                </a>
+                            </div>
+                        </div>
+                    `
+                });
+
+                marker.addListener('click', () => {
+                    if (currentInfoWindow) {
+                        currentInfoWindow.close();
+                    }
+                    infoWindow.open(map, marker);
+                    currentInfoWindow = infoWindow; // Set the current info window
+                });
+
+                markers.push(marker);
+            }
+        });
+
+        // Fit map to show all markers
+        if (markers.length > 0) {
+            const bounds = new google.maps.LatLngBounds();
+            markers.forEach(marker => bounds.extend(marker.getPosition()));
+            if (userLocation) bounds.extend(userLocation.getPosition());
+            map.fitBounds(bounds);
+        }
+    }
+
+    function displayHospitals(hospitals) {
+        hospitalsContainer.innerHTML = '';
+
+        if (hospitals.length === 0) {
+            hospitalsContainer.innerHTML = `
+                <div class="no-results">
+                    <div class="no-results-icon">🏥</div>
+                    <p>No hospitals found in your area. Try again or check your location.</p>
+                </div>
+            `;
+            mapContainer.classList.add('hidden');
+            return;
+        }
+
+        // Show map
+        mapContainer.classList.remove('hidden');
+        mapStats.textContent = `${hospitals.length} hospital${hospitals.length !== 1 ? 's' : ''} found`;
+
+        // Add markers to map
+        addHospitalMarkers(hospitals);
+
+        // Display hospital cards
+        const grid = document.createElement('div');
+        grid.className = 'hospitals-grid';
+
+        hospitals.forEach(hospital => {
+            const card = document.createElement('div');
+            card.className = 'hospital-card';
+            
+            const ratingHtml = hospital.rating && hospital.rating !== 'N/A' 
+                ? `<div class="hospital-rating">⭐ ${hospital.rating}</div>`
+                : '';
+
+            const mapsUrl = hospital.lat && hospital.lng 
+                ? `https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lng}`
+                : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hospital.name + ' ' + hospital.address)}`;
+
+            card.innerHTML = `
+                <div class="hospital-name">${hospital.name}</div>
+                ${ratingHtml}
+                <div class="hospital-address">📍 ${hospital.address}</div>
+                <div class="hospital-actions">
+                    <button class="btn btn-primary btn-small" onclick="window.open('${mapsUrl}', '_blank')">
+                        Get Directions
+                    </button>
+                    <button class="btn btn-secondary btn-small" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hospital.name)}', '_blank')">
+                        View on Map
+                    </button>
+                </div>
+            `;
+            
+            grid.appendChild(card);
+        });
+
+        hospitalsContainer.appendChild(grid);
+    }
+
+    async function findHospitals(latitude, longitude) {
+        showLoading();
+
+        try {
+            const response = await fetch('/api/find_hospitals', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    latitude: latitude,
+                    longitude: longitude
+                }),
+            });
+
+            const data = await response.json();
+            hideLoading();
+
+            if (data.success && data.hospitals) {
+                // Initialize map if not already done
+                if (!map) {
+                    initMap(latitude, longitude);
+                }
+                displayHospitals(data.hospitals);
+                
+                if (data.demo_mode) {
+                    showAlert(`Demo Mode: Showing ${data.hospitals.length} sample hospitals near you! (No API key configured)`, 'info');
+                } else {
+                    showAlert(`Found ${data.hospitals.length} hospital(s) near you!`);
+                }
+            } else {
+                showAlert(data.error || 'Failed to find hospitals', 'error');
+                hospitalsContainer.innerHTML = `
+                    <div class="no-results">
+                        <div class="no-results-icon">❌</div>
+                        <p>${data.error || 'Failed to find hospitals. Please try again.'}</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            hideLoading();
+            console.error('Error:', error);
+            showAlert('Failed to connect to the server', 'error');
+            hospitalsContainer.innerHTML = `
+                <div class="no-results">
+                    <div class="no-results-icon">❌</div>
+                    <p>Failed to connect to the server. Please try again later.</p>
+                </div>
+            `;
+        }
+    }
+
+    findHospitalsBtn.addEventListener('click', () => {
+        findHospitalsBtn.disabled = true;
+        findHospitalsBtn.textContent = 'Getting Location...';
+
+        if (!navigator.geolocation) {
+            showAlert('Geolocation is not supported by your browser. Using a default location.', 'info');
+            locationInfo.classList.remove('hidden');
+            locationInfo.textContent = `📍 Using default location: ${DEFAULT_LATITUDE.toFixed(4)}, ${DEFAULT_LONGITUDE.toFixed(4)}`;
+            findHospitalsBtn.disabled = false;
+            findHospitalsBtn.textContent = '📍 Find Hospitals Near Me';
+            initMap(DEFAULT_LATITUDE, DEFAULT_LONGITUDE);
+            findHospitals(DEFAULT_LATITUDE, DEFAULT_LONGITUDE);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                
+                locationInfo.classList.remove('hidden');
+                locationInfo.textContent = `📍 Location found: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+                
+                findHospitalsBtn.disabled = false;
+                findHospitalsBtn.textContent = '📍 Find Hospitals Near Me';
+                
+                findHospitals(latitude, longitude);
+            },
+            (error) => {
+                findHospitalsBtn.disabled = false;
+                findHospitalsBtn.textContent = '📍 Find Hospitals Near Me';
+                
+                let errorMessage = 'Unable to get your location. ';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += 'Please allow location access in your browser settings.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += 'Location information is unavailable.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += 'Location request timed out.';
+                        break;
+                    default:
+                        errorMessage += 'An unknown error occurred.';
+                }
+                
+                showAlert(errorMessage + ' Using a default location.', 'error');
+                locationInfo.classList.remove('hidden');
+                locationInfo.textContent = `📍 Using default location: ${DEFAULT_LATITUDE.toFixed(4)}, ${DEFAULT_LONGITUDE.toFixed(4)}`;
+                initMap(DEFAULT_LATITUDE, DEFAULT_LONGITUDE);
+                findHospitals(DEFAULT_LATITUDE, DEFAULT_LONGITUDE);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Health Assistant - Home{% endblock %}
+
+{% block extra_css %}
+<style>
+    .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        margin-top: 40px;
+    }
+
+    .feature-card {
+        background: linear-gradient(135deg,rgb(47, 232, 103) 0%,rgb(18, 15, 190) 100%);
+        padding: 30px;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        transition: transform 0.3s;
+        cursor: pointer;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .feature-card h2 {
+        margin-bottom: 15px;
+        color: white;
+    }
+
+    .feature-card p {
+        line-height: 1.6;
+    }
+
+    .feature-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+    }
+
+    .welcome {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .welcome h1 {
+        font-size: 2.5em;
+        margin-bottom: 15px;
+    }
+
+    .welcome p {
+        font-size: 1.2em;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="welcome">
+    <h1>🏥 Welcome to Health Assistant</h1>
+    <p>Your personal health management companion</p>
+</div>
+
+<div class="features">
+    <div class="feature-card" onclick="window.location.href='/chatbot'">
+        <div class="feature-icon">🤖</div>
+        <h2>AI Health Chatbot</h2>
+        <p>Get instant answers to your health questions using advanced AI technology. Ask about symptoms, medications, or general health advice.</p>
+    </div>
+
+    <div class="feature-card" onclick="window.location.href='/reminders'">
+        <div class="feature-icon">💊</div>
+        <h2>Medicine Reminders</h2>
+        <p>Never miss your medication again. Set up personalized reminders for all your medicines and stay on track with your treatment.</p>
+    </div>
+
+    <div class="feature-card" onclick="window.location.href='/hospitals'">
+        <div class="feature-icon">🏥</div>
+        <h2>Find Nearby Hospitals</h2>
+        <p>Locate hospitals and clinics near you instantly. Get directions, ratings, and contact information for emergency or routine care.</p>
+    </div>
+</div>
+{% endblock %}
